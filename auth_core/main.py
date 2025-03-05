@@ -10,13 +10,16 @@ from pymongo import MongoClient
 from passlib.context import CryptContext
 import os
 from typing import Dict
+from model import RefreshTokenRequest
 
 
 # 設定密鑰與算法
 SECRET_KEY = os.getenv("SECRET_KEY")  
+REFRESH_SECRET_KEY = os.getenv("REFRESH_SECRET_KEY", "your_refresh_secret_key")  # 新增 Refresh Token 密鑰
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 5
 RATE_LIMIT_PER_MINUTE = 3  # 每分鐘最多請求次數
+REFRESH_TOKEN_EXPIRE_DAYS = 7  # Refresh Token 存活時間
 
 app = FastAPI()
 
@@ -98,9 +101,15 @@ def create_access_token(data: dict):
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
 
-def verify_token(token: str):
+def create_refresh_token(data: dict):
+    to_encode = data.copy()
+    expire = datetime.utcnow() + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS)
+    to_encode.update({"exp": expire})
+    return jwt.encode(to_encode, REFRESH_SECRET_KEY, algorithm=ALGORITHM)
+
+def verify_token(token: str, secret_key: str) -> Dict:
     try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        payload = jwt.decode(token, secret_key, algorithms=[ALGORITHM])
         jti = payload.get("jti")
         username = payload.get("sub")
         if jti is None or username is None:
@@ -142,12 +151,34 @@ def generate_token(form_data: OAuth2PasswordRequestForm = Depends()):
         raise HTTPException(status_code=401, detail="Invalid username or password")
     
     jti = str(uuid.uuid4())  # 生成唯一的 token ID
-    token = create_access_token({"sub": user["username"], "jti": jti})
-    return {"access_token": token, "token_type": "bearer"}
+    access_token = create_access_token({"sub": user["username"], "jti": jti})
+    refresh_token = create_refresh_token({"sub": user["username"],"jti": jti})
+    return {
+        "access_token": access_token,
+        "refresh_token": refresh_token,
+        "token_type": "bearer"
+    }
+@app.post("/refresh", response_model=dict, summary="Refresh Access Token")
+def refresh_access_token(request: RefreshTokenRequest):
+    payload = verify_token(request.refresh_token, REFRESH_SECRET_KEY)  # 驗證 Refresh Token
+    username = payload.get("sub")
+    if not username:
+        raise HTTPException(status_code=401, detail="Invalid token")
+
+    jti = str(uuid.uuid4())  # 生成唯一的 token ID
+
+    access_token = create_access_token({"sub": username, "jti": jti})
+    refresh_token = create_refresh_token({"sub": username,"jti": jti})
+
+    return {
+        "access_token": access_token,
+        "refresh_token": refresh_token,
+        "token_type": "bearer"
+    }
 
 @app.get("/protected")
 def protected_route(token: str = Depends(oauth2_scheme)):
-    payload = verify_token(token)
+    payload = verify_token(token,SECRET_KEY)
     username = payload["sub"]
     rate_limit(username)  # 檢查是否超過使用次數
     return {"message": "You have accessed a protected route", "user": username}
