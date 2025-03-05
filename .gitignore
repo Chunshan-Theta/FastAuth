@@ -1,0 +1,39 @@
+# Python 虛擬環境
+venv/
+*.pyc
+*.pyo
+*.pyd
+__pycache__/
+*.swp
+
+# 環境變數檔案
+.env
+.env.*
+
+# IDE/編輯器設定
+.vscode/
+.idea/
+*.iml
+
+# FastAPI 產生的 __pycache__
+__pycache__/
+*.log
+
+# Docker 相關
+docker-compose.override.yml
+.dockerignore
+
+# MongoDB / Redis 資料（避免將資料庫文件推送到 Git）
+mongo_data/
+redis_data/
+*.db
+dump.rdb
+appendonly.aof
+
+# Python 依賴文件（如果使用 requirements.txt，就不需要這個資料夾）
+pip-log.txt
+pip-delete-this-directory.txt
+
+# macOS / Linux / Windows 特定檔案
+.DS_Store
+Thumbs.db
