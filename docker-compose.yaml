@@ -10,6 +10,7 @@ services:
       - mongo
       - redis
     environment:
+      - SECRET_KEY=your_super_secret_key  # 🔹 在這裡設定 SECRET_KEY
       - MONGO_URI=mongodb://mongo:27017/auth_db
       - REDIS_HOST=redis
     # volumes:

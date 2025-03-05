@@ -1,6 +1,7 @@
 from fastapi import FastAPI, Depends, HTTPException, Body
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from fastapi.openapi.utils import get_openapi
+from fastapi.middleware.cors import CORSMiddleware
 from jose import JWTError, jwt
 from datetime import datetime, timedelta
 import redis
@@ -12,7 +13,7 @@ from typing import Dict
 
 
 # 設定密鑰與算法
-SECRET_KEY = "your_secret_key"
+SECRET_KEY = os.getenv("SECRET_KEY")  
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 5
 RATE_LIMIT_PER_MINUTE = 3  # 每分鐘最多請求次數
@@ -53,6 +54,15 @@ def custom_openapi():
 # 設定 FastAPI 使用自訂 OpenAPI
 app.openapi = custom_openapi
 
+
+# 🔹 CORS 設定，允許所有來源（或特定來源）
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # 🚀 允許所有前端請求 (可改為特定域名) ["https://yourfrontend.com", "https://anotherfrontend.com"]
+    allow_credentials=True,
+    allow_methods=["*"],  # 允許所有 HTTP 方法
+    allow_headers=["*"],  # 允許所有 HTTP Headers
+)
 
 
 # 初始化 Redis
