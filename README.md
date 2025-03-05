@@ -1,0 +1,2 @@
+# FastAuth
+Fast authentication API.
